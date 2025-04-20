@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF文档比对与分析系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .chat-container {
+            height: 500px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 0.25rem;
+            padding: 1rem;
+            background-color: #fff;
+        }
+        .user-message {
+            background-color: #007bff;
+            color: white;
+            border-radius: 18px;
+            padding: 8px 15px;
+            margin-bottom: 10px;
+            max-width: 75%;
+            align-self: flex-end;
+            word-wrap: break-word;
+        }
+        .assistant-message {
+            background-color: #e9ecef;
+            color: #212529;
+            border-radius: 18px;
+            padding: 8px 15px;
+            margin-bottom: 10px;
+            max-width: 75%;
+            align-self: flex-start;
+            word-wrap: break-word;
+        }
+        .message-row {
+            display: flex;
+            margin-bottom: 15px;
+        }
+        .message-row.user {
+            justify-content: flex-end;
+        }
+        .message-row.assistant {
+            justify-content: flex-start;
+        }
+        .file-status {
+            padding: 5px;
+            margin-top: 5px;
+            border-radius: 4px;
+        }
+        .loading-indicator {
+            display: none;
+            text-align: center;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container my-4">
+        <h1 class="text-center mb-4">PDF文档比对与分析系统</h1>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">文件 1</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <input type="file" class="form-control" id="file1" name="file1" accept=".pdf">
+                            <div id="file1_status" class="file-status mt-2"></div>
+                            <input type="hidden" id="file1_path" name="file1_path">
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="uploadFile('file1')">
+                            <i class="bi bi-upload"></i> 上传文件1
+                        </button>
+                        <div id="file1_container" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">文件 2</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <input type="file" class="form-control" id="file2" name="file2" accept=".pdf">
+                            <div id="file2_status" class="file-status mt-2"></div>
+                            <input type="hidden" id="file2_path" name="file2_path">
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="uploadFile('file2')">
+                            <i class="bi bi-upload"></i> 上传文件2
+                        </button>
+                        <div id="file2_container" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">对话助手</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="chat-container" class="chat-container mb-3">
+                            <div class="message-row assistant">
+                                <div class="assistant-message">
+                                    您好！请上传PDF文档，然后您可以向我提问关于文档内容的问题。我将帮助您分析和比对文档。
+                                </div>
+                            </div>
+                        </div>
+                        <div id="loading-indicator" class="loading-indicator">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                            <p class="mt-2">正在处理您的请求...</p>
+                        </div>
+                        <div class="input-group">
+                            <input type="text" id="message-input" class="form-control" placeholder="输入您的问题...">
+                            <button class="btn btn-primary" type="button" id="send-button">
+                                <i class="bi bi-send"></i> 发送
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        // 获取CSRF令牌的函数
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        const csrftoken = getCookie('csrftoken');
+
+        // 上传文件的函数
+        function uploadFile(fileInputId) {
+            let fileInput = document.getElementById(fileInputId);
+            let file = fileInput.files[0];
+            if (!file) {
+                alert('请先选择文件');
+                return;
+            }
+            
+            // 显示上传中状态
+            const statusElement = document.getElementById(fileInputId + '_status');
+            statusElement.textContent = '上传中...';
+            statusElement.className = 'file-status mt-2 alert alert-info';
+            
+            let formData = new FormData();
+            formData.append(fileInputId, file);
+            
+            // 创建 AJAX 请求
+            let xhr = new XMLHttpRequest();
+            xhr.open('POST', '', true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            xhr.setRequestHeader('X-CSRFToken', csrftoken);  // 添加CSRF令牌
+            
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        let response = JSON.parse(xhr.responseText);
+                        let fileUrl = response[fileInputId + '_url'];
+                        let processed = response[fileInputId + '_processed'];
+                        
+                        // 更新状态信息
+                        if (processed) {
+                            statusElement.textContent = '✅ 上传成功，文件已处理完毕';
+                            statusElement.className = 'file-status mt-2 alert alert-success';
+                        } else {
+                            statusElement.textContent = '⚠️ 上传成功，但文件处理失败';
+                            statusElement.className = 'file-status mt-2 alert alert-warning';
+                        }
+                        
+                        // 显示PDF预览
+                        document.getElementById(fileInputId + '_container').innerHTML = 
+                            `<iframe src="/static/pdfjs/web/viewer.html?file=${encodeURIComponent(fileUrl)}" 
+                             width="100%" height="400px" style="border: none;"></iframe>`;
+                        
+                        // 保存文件路径到隐藏字段
+                        document.getElementById(fileInputId + '_path').value = fileUrl;
+                        
+                        // 添加系统消息到聊天
+                        addMessage(`文件 ${fileInputId.replace('file', '')} 已成功上传和处理。现在您可以开始提问了！`, 'assistant');
+                    } else {
+                        let errorMsg = '上传失败';
+                        try {
+                            let response = JSON.parse(xhr.responseText);
+                            if (response.error) {
+                                errorMsg = response.error;
+                            }
+                        } catch(e) {
+                            console.error('解析错误响应失败', e);
+                        }
+                        statusElement.textContent = '❌ ' + errorMsg;
+                        statusElement.className = 'file-status mt-2 alert alert-danger';
+                    }
+                }
+            };
+            
+            xhr.send(formData);
+        }
+        
+        // 处理消息发送
+        document.getElementById('send-button').addEventListener('click', function() {
+            sendMessage();
+        });
+        
+        document.getElementById('message-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        
+        function sendMessage() {
+            const messageInput = document.getElementById('message-input');
+            const message = messageInput.value.trim();
+            
+            if (message === '') return;
+            
+            // 显示用户消息
+            addMessage(message, 'user');
+            
+            // 清空输入框
+            messageInput.value = '';
+            
+            // 显示加载指示器
+            document.getElementById('loading-indicator').style.display = 'block';
+            
+            // 发送请求到后端
+            fetch('/api/message/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken  // 添加CSRF令牌
+                },
+                body: JSON.stringify({ message: message }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                // 隐藏加载指示器
+                document.getElementById('loading-indicator').style.display = 'none';
+                
+                if (data.error) {
+                    addMessage(`错误: ${data.error}`, 'assistant');
+                } else {
+                    // 使用marked.js渲染Markdown格式的回复
+                    addMessage(data.response, 'assistant', true);
+                }
+            })
+            .catch(error => {
+                // 隐藏加载指示器
+                document.getElementById('loading-indicator').style.display = 'none';
+                addMessage(`发生错误: ${error.message}`, 'assistant');
+            });
+        }
+        
+        function addMessage(text, sender, useMarkdown = false) {
+            const chatContainer = document.getElementById('chat-container');
+            const messageRow = document.createElement('div');
+            messageRow.className = `message-row ${sender}`;
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `${sender}-message`;
+            
+            // 如果是markdown格式，使用marked.js渲染
+            if (useMarkdown && sender === 'assistant') {
+                messageDiv.innerHTML = marked.parse(text);
+            } else {
+                messageDiv.textContent = text;
+            }
+            
+            messageRow.appendChild(messageDiv);
+            chatContainer.appendChild(messageRow);
+            
+            // 滚动到底部
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    </script>
+</body>
+</html>
