@@ -23,4 +23,6 @@ jobs:
             -Dsonar.projectKey=yyqyyq_dbpdf
             -Dsonar.organization=yyqyyq
             -Dsonar.sources=.
-            -Dsonar.java.binaries=./build/classes
+            -Dsonar.c.file.suffixes=-          # 禁用C文件分析
+            -Dsonar.cpp.file.suffixes=-         # 禁用C++文件分析
+            -Dsonar.objc.file.suffixes=-        # 禁用Objective-C文件分析
