@@ -2,10 +2,8 @@ name: Build
 on:
   push:
     branches:
-      - main
+      - master
   pull_request:
-    branches:
-      - main
     types: [opened, synchronize, reopened]
 jobs:
   sonarqube:
@@ -19,5 +17,3 @@ jobs:
         uses: SonarSource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          sonar.projectKey: yyqyyq_dbpdf 
-          sonar.organization: yyqyyq
