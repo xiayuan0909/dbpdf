@@ -23,4 +23,4 @@ jobs:
             -Dsonar.projectKey=yyqyyq_dbpdf
             -Dsonar.organization=yyqyyq
             -Dsonar.sources=.  # 扫描所有源代码
-            -Dsonar.java.binaries=./build/classes  # 示例：Java二进制文件路径（根据项目语言调整）
+            -Dsonar.java.binaries=./build/classes  # Java二进制文件路径（非Java项目请删除此行）
