@@ -17,3 +17,6 @@ jobs:
         uses: SonarSource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io  # 确保指向SonarCloud
+          SONAR_PROJECT_KEY: yyqyyq_dbpdf        # 添加项目Key
+          SONAR_ORGANIZATION: yyqyyq             # 添加组织名
