@@ -12,11 +12,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+          fetch-depth: 0  # 禁用浅克隆，确保完整代码扫描
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: https://sonarcloud.io  # 确保指向SonarCloud
-          SONAR_PROJECT_KEY: yyqyyq_dbpdf        # 添加项目Key
-          SONAR_ORGANIZATION: yyqyyq             # 添加组织名
+          SONAR_HOST_URL: https://sonarcloud.io  # 显式指定SonarCloud地址
+        with:
+          args: >-
+            -Dsonar.projectKey=yyqyyq_dbpdf
+            -Dsonar.organization=yyqyyq
+            -Dsonar.sources=.  # 扫描所有源代码
+            -Dsonar.java.binaries=./build/classes  # 示例：Java二进制文件路径（根据项目语言调整）
